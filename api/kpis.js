@@ -41,7 +41,8 @@ export default async function handler(req, res) {
       const outcome = (d.call_outcome || "").toLowerCase();
       const name = nameOf(d);
       const callback = callbackOf(d);
-      const phone = callback || c.from_number || "";
+      const callerId = c.from_number || "";
+      const phone = callback || callerId;
       const email = emailOf(d);
       const isLead = !!name || !!callback || outcome.includes("lead");
       const isAppt = outcome.includes("book") || outcome.includes("appointment") || outcome.includes("appt") || d.booked === true;
@@ -51,7 +52,7 @@ export default async function handler(req, res) {
         ts: c.start_timestamp || 0,
         time: c.start_timestamp ? new Date(c.start_timestamp).toLocaleString() : "",
         caller: name || phone || "Unknown",
-        name, phone, email,
+        name, phone, email, callerId, callback,
         secs: Math.round(s),
         outcome: isAppt ? "Booked" : isLead ? "Lead captured" : (s <= 8 ? "No info given" : "Handled")
       });
