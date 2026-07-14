@@ -1,5 +1,6 @@
 // Vercel serverless function — reads real calls from Retell and returns KPIs.
 // Env vars (set in Vercel): RETELL_API_KEY (required), optionally AGENT_IDS (comma-separated to filter).
+// A per-request ?agent=<id> also scopes the data (used by the customer login).
 export default async function handler(req, res) {
   const key = process.env.RETELL_API_KEY;
   if (!key) return res.status(500).json({ error: "RETELL_API_KEY not set" });
@@ -8,7 +9,7 @@ export default async function handler(req, res) {
     .split(",").map(s => s.trim()).filter(Boolean);
 
   try {
-    // Retell v2 list-calls (POST). Pull recent calls.
+    // Retell list-calls (POST). v2 still works; v3 returns { items: [...] }.
     const r = await fetch("https://api.retellai.com/v2/list-calls", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -16,7 +17,7 @@ export default async function handler(req, res) {
     });
     if (!r.ok) return res.status(502).json({ error: "Retell API error", status: r.status });
     let calls = await r.json();
-    if (!Array.isArray(calls)) calls = calls.calls || [];
+    if (!Array.isArray(calls)) calls = calls.items || calls.calls || [];
 
     if (agentFilter.length) calls = calls.filter(c => agentFilter.includes(c.agent_id));
 
@@ -26,22 +27,26 @@ export default async function handler(req, res) {
       return (c.call_cost && c.call_cost.total_duration_seconds) || 0;
     };
     const cad = c => (c.call_analysis && c.call_analysis.custom_analysis_data) || {};
+    // Caller name / callback can arrive under several field-name conventions across agents.
+    const nameOf = d => (d.caller_name || d.business_name ||
+      [d.first_name, d.last_name].filter(Boolean).join(" ").trim() || "");
+    const callbackOf = d => (d.best_callback_number || d.callback_number || "");
 
-    let totalSec = 0, leads = 0, appts = 0, answered = 0;
+    let totalSec = 0, leads = 0, appts = 0;
     const recent = [];
     for (const c of calls) {
       const s = durSec(c); totalSec += s;
       const d = cad(c);
       const outcome = (d.call_outcome || "").toLowerCase();
-      const name = d.caller_name || d.business_name || "";
-      const isLead = !!name || !!d.best_callback_number || outcome.includes("lead");
-      const isAppt = outcome.includes("book") || outcome.includes("appointment") || outcome.includes("appt");
-      if (s > 8) answered++;                 // real, connected calls
+      const name = nameOf(d);
+      const callback = callbackOf(d);
+      const isLead = !!name || !!callback || outcome.includes("lead");
+      const isAppt = outcome.includes("book") || outcome.includes("appointment") || outcome.includes("appt") || d.booked === true;
       if (isLead) leads++;
       if (isAppt) appts++;
       if (recent.length < 12) recent.push({
         time: c.start_timestamp ? new Date(c.start_timestamp).toLocaleString() : "",
-        caller: name || (d.best_callback_number || "Unknown"),
+        caller: name || callback || "Unknown",
         secs: Math.round(s),
         outcome: isAppt ? "Booked" : isLead ? "Lead captured" : (s <= 8 ? "No info given" : "Handled")
       });
