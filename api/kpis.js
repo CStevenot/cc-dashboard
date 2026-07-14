@@ -27,10 +27,11 @@ export default async function handler(req, res) {
       return (c.call_cost && c.call_cost.total_duration_seconds) || 0;
     };
     const cad = c => (c.call_analysis && c.call_analysis.custom_analysis_data) || {};
-    // Caller name / callback can arrive under several field-name conventions across agents.
+    // Caller name / callback / email can arrive under several field-name conventions across agents.
     const nameOf = d => (d.caller_name || d.business_name ||
       [d.first_name, d.last_name].filter(Boolean).join(" ").trim() || "");
     const callbackOf = d => (d.best_callback_number || d.callback_number || "");
+    const emailOf = d => (d.email || d.caller_email || d.customer_email || d.contact_email || "");
 
     let totalSec = 0, leads = 0, appts = 0;
     const recent = [];
@@ -40,13 +41,17 @@ export default async function handler(req, res) {
       const outcome = (d.call_outcome || "").toLowerCase();
       const name = nameOf(d);
       const callback = callbackOf(d);
+      const phone = callback || c.from_number || "";
+      const email = emailOf(d);
       const isLead = !!name || !!callback || outcome.includes("lead");
       const isAppt = outcome.includes("book") || outcome.includes("appointment") || outcome.includes("appt") || d.booked === true;
       if (isLead) leads++;
       if (isAppt) appts++;
-      if (recent.length < 12) recent.push({
+      if (recent.length < 100) recent.push({
+        ts: c.start_timestamp || 0,
         time: c.start_timestamp ? new Date(c.start_timestamp).toLocaleString() : "",
-        caller: name || callback || "Unknown",
+        caller: name || phone || "Unknown",
+        name, phone, email,
         secs: Math.round(s),
         outcome: isAppt ? "Booked" : isLead ? "Lead captured" : (s <= 8 ? "No info given" : "Handled")
       });
