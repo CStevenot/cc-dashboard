@@ -31,6 +31,8 @@ th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
 th[data-k]:hover{color:var(--white)}
 th .arr{color:var(--cyan);font-size:10px}
 .nores{color:var(--mute);font-size:13px;padding:12px 6px;display:none}
+.ic{font-weight:800;font-size:15px}.ic.ok{color:var(--green)}.ic.warn{color:var(--amber)}.ic.no{color:#f87171}.ic.mute{color:var(--mute)}
+td.ctr,th.ctr{text-align:center}
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:12px 6px;font-size:14px;border-bottom:1px solid var(--line)}
 th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
@@ -90,6 +92,8 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
       <th data-k="ts" onclick="sortBy('ts')">Date &amp; Time<span class="arr"></span></th>
       <th data-k="callerId" onclick="sortBy('callerId')">Caller ID<span class="arr"></span></th>
       <th data-k="callback" onclick="sortBy('callback')">Phone Provided<span class="arr"></span></th>
+      <th data-k="_match" class="ctr" onclick="sortBy('_match')" title="Does the number they gave match their caller ID?">Match<span class="arr"></span></th>
+      <th data-k="_text" class="ctr" onclick="sortBy('_text')" title="Did the caller consent to text messages?">Texts OK<span class="arr"></span></th>
       <th data-k="name" onclick="sortBy('name')">Name<span class="arr"></span></th>
       <th data-k="email" onclick="sortBy('email')">Email<span class="arr"></span></th>
       <th data-k="secs" onclick="sortBy('secs')">Length<span class="arr"></span></th>
@@ -133,6 +137,12 @@ function tagClass(o){o=o.toLowerCase();return o.includes('book')?'booked':o.incl
 // ---- Call table: sortable columns + search across all fields ----
 let ROWS = [], SORT = { k:'ts', dir:-1 };
 const looksLikePhone = s => /^[+\d(][\d\s().-]{5,}$/.test(s||'');
+const digits10 = s => (s||'').replace(/\D/g,'').slice(-10);
+function matchState(callerId, callback){
+  const a=digits10(callerId), b=digits10(callback);
+  if(b.length<10) return '';               // nothing usable to compare
+  return (a.length>=10 && a===b) ? 'match' : 'mismatch';
+}
 function fmtTime(r){
   return r.ts ? new Date(r.ts).toLocaleString([], {month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit'}) : (r.time||'');
 }
@@ -143,7 +153,7 @@ function sortBy(k){
 }
 function draw(){
   const q=(document.getElementById('q').value||'').trim().toLowerCase();
-  const rows=ROWS.filter(r=>!q||[fmtTime(r),r.callerId,r.callback,r.name,r.email,fmt(r.secs),r.outcome].join(' ').toLowerCase().includes(q));
+  const rows=ROWS.filter(r=>!q||[fmtTime(r),r.callerId,r.callback,r.name,r.email,fmt(r.secs),r.outcome,r._match,r._text].join(' ').toLowerCase().includes(q));
   const k=SORT.k, dir=SORT.dir;
   rows.sort((a,b)=>{
     const x=a[k]??'', y=b[k]??'';
@@ -158,7 +168,11 @@ function draw(){
   rows.forEach(r=>{
     const tr=document.createElement('tr');
     const td=t=>{const e=document.createElement('td');e.textContent=t||'—';return e;};
-    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.callerId));tr.appendChild(td(r.callback));tr.appendChild(td(r.name));
+    const icon=(ch,cls)=>{const e=document.createElement('td');e.className='ctr';const s=document.createElement('span');s.className='ic '+cls;s.textContent=ch;e.appendChild(s);return e;};
+    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.callerId));tr.appendChild(td(r.callback));
+    tr.appendChild(r._match==='match'?icon('✓','ok'):r._match==='mismatch'?icon('⚠','warn'):icon('—','mute'));
+    tr.appendChild(r._text==='yes'?icon('✓','ok'):r._text==='no'?icon('✗','no'):icon('—','mute'));
+    tr.appendChild(td(r.name));
     tr.appendChild(td(r.email));tr.appendChild(td(fmt(r.secs)));
     const o=document.createElement('td');const sp=document.createElement('span');
     sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
@@ -175,14 +189,20 @@ function render(d){
   document.getElementById('uUsed').textContent=used;
   document.getElementById('ubar').style.width=Math.min(100,used/inc*100)+'%';
   document.getElementById('uLeft').textContent=(inc-used>=0?(inc-used)+' left':(used-inc)+' over')+' · resets monthly';
-  ROWS=(d.recent||[]).map(r=>({
-    ts:r.ts||0, time:r.time||'',
-    callerId:r.callerId!==undefined?r.callerId:(r.phone!==undefined?r.phone:(looksLikePhone(r.caller)?r.caller:'')),
-    callback:r.callback||'',
-    name:r.name!==undefined?r.name:(looksLikePhone(r.caller)?'':(r.caller==='Unknown'?'':r.caller)),
-    email:r.email||'',
-    secs:r.secs||0, outcome:r.outcome||''
-  }));
+  ROWS=(d.recent||[]).map(r=>{
+    const callerId=r.callerId!==undefined?r.callerId:(r.phone!==undefined?r.phone:(looksLikePhone(r.caller)?r.caller:''));
+    const callback=r.callback||'';
+    const tc=r.textConsent===true?'yes':(r.textConsent===false?'no':'');
+    return {
+      ts:r.ts||0, time:r.time||'',
+      callerId, callback,
+      _match:matchState(callerId, callback),
+      _text:tc,
+      name:r.name!==undefined?r.name:(looksLikePhone(r.caller)?'':(r.caller==='Unknown'?'':r.caller)),
+      email:r.email||'',
+      secs:r.secs||0, outcome:r.outcome||''
+    };
+  });
   draw();
   document.getElementById('src').textContent='● live data';
   document.getElementById('src').style.color='#34D399';
