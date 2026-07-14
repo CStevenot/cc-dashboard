@@ -25,8 +25,11 @@ body{background:linear-gradient(180deg,var(--navy),var(--navy2));color:var(--whi
 .sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 22px 14px;margin-bottom:22px;overflow-x:auto}
 .sec h3{font-size:16px;margin:16px 0 6px}
 .sechead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tools{display:flex;gap:10px;align-items:center}
 .search{padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:#0a1a30;color:var(--white);font-size:13px;font-weight:600;outline:none;width:230px;max-width:100%}
 .search:focus{border-color:var(--cyan)}
+.gear{background:#0a1a30;border:1px solid var(--line);color:var(--mute);border-radius:10px;width:38px;height:38px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.gear:hover{color:var(--white);border-color:var(--cyan)}
 th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
 th[data-k]:hover{color:var(--white)}
 th .arr{color:var(--cyan);font-size:10px}
@@ -40,6 +43,17 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
 .tag.booked{background:rgba(52,211,153,.15);color:var(--green)}.tag.lead{background:rgba(34,211,238,.15);color:var(--cyan)}.tag.missed{background:rgba(245,158,66,.15);color:var(--amber)}
 .foot{color:var(--mute);font-size:12px;text-align:center;margin-top:30px}
 .err{background:rgba(245,158,66,.1);border:1px solid var(--amber);color:var(--amber);border-radius:12px;padding:14px 18px;font-size:14px;font-weight:600;margin-bottom:22px;display:none}
+.cfgpop{position:fixed;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;width:238px;box-shadow:0 12px 34px rgba(0,0,0,.45);display:none}
+.cfgpop h4{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;margin:4px 6px 8px}
+.cfgrow{display:flex;justify-content:space-between;align-items:center;padding:5px 6px;border-radius:8px}
+.cfgrow:hover{background:#0a1a30}
+.cfgrow label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer}
+.cfgrow input{accent-color:var(--cyan);width:15px;height:15px}
+.cfgbtns{display:flex;gap:4px}
+.cfgbtns button{background:#0a1a30;border:1px solid var(--line);color:var(--mute);border-radius:6px;width:24px;height:24px;font-size:10px;cursor:pointer}
+.cfgbtns button:hover:not(:disabled){color:var(--white);border-color:var(--cyan)}
+.cfgbtns button:disabled{opacity:.3;cursor:default}
+.cfgreset{margin:8px 6px 2px;font-size:12px;color:var(--cyan);cursor:pointer;font-weight:700;background:none;border:none;padding:4px 2px}
 #loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .login{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:38px 34px;width:100%;max-width:400px;text-align:center}
 .login .brand{font-size:26px;margin-bottom:6px}
@@ -74,7 +88,7 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
   <div class="plan">
     <span class="pill cyan" id="planName">Live</span>
     <span class="pill">Activity to date</span>
-    <span class="pill" id="src">connecting…</span>
+    <span class="pill" id="src">connecting&hellip;</span>
   </div>
   <div class="err" id="errBox">We couldn't load your live call data just now. Your AI agent is still answering calls — try refreshing in a minute.</div>
   <div class="grid">
@@ -87,20 +101,16 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
     <div class="bar"><i id="ubar" style="width:0%"></i></div>
     <div class="uinfo"><span><b id="uUsed" style="color:#fff">—</b> of <span id="uInc"></span> included minutes used</span><span id="uLeft"></span></div>
   </div>
-  <div class="sec"><div class="sechead"><h3>Calls</h3><input id="q" class="search" type="search" placeholder="Search calls&hellip;" oninput="draw()"></div>
-    <table><thead><tr>
-      <th data-k="ts" onclick="sortBy('ts')">Date &amp; Time<span class="arr"></span></th>
-      <th data-k="callerId" onclick="sortBy('callerId')">Caller ID<span class="arr"></span></th>
-      <th data-k="callback" onclick="sortBy('callback')">Phone Provided<span class="arr"></span></th>
-      <th data-k="_match" class="ctr" onclick="sortBy('_match')" title="Does the number they gave match their caller ID?">Match<span class="arr"></span></th>
-      <th data-k="_text" class="ctr" onclick="sortBy('_text')" title="Did the caller consent to text messages?">Texts OK<span class="arr"></span></th>
-      <th data-k="name" onclick="sortBy('name')">Name<span class="arr"></span></th>
-      <th data-k="email" onclick="sortBy('email')">Email<span class="arr"></span></th>
-      <th data-k="secs" onclick="sortBy('secs')">Length<span class="arr"></span></th>
-      <th data-k="outcome" onclick="sortBy('outcome')">Outcome<span class="arr"></span></th>
-    </tr></thead><tbody id="rows"></tbody></table>
+  <div class="sec"><div class="sechead"><h3>Calls</h3><div class="tools"><input id="q" class="search" type="search" placeholder="Search calls&hellip;" oninput="draw()"><button class="gear" id="gearBtn" title="Customize columns" onclick="toggleSettings(event)">&#9881;</button></div></div>
+    <table><thead><tr id="thead"></tr></thead><tbody id="rows"></tbody></table>
     <div class="nores" id="nores">No calls match your search.</div></div>
   <div class="foot">Client Connected · customer portal</div>
+</div>
+
+<div class="cfgpop" id="cfgpop">
+  <h4>Columns</h4>
+  <div id="cfglist"></div>
+  <button class="cfgreset" onclick="resetPrefs()">Reset to default</button>
 </div>
 </div>
 
@@ -130,21 +140,71 @@ function enter(c){
   document.getElementById('bizName').textContent = c.biz;
   document.getElementById('planName').textContent = c.plan;
   document.getElementById('uInc').textContent = c.included;
+  buildHeader();
   load(c);
 }
 function tagClass(o){o=o.toLowerCase();return o.includes('book')?'booked':o.includes('lead')?'lead':'missed';}
 
-// ---- Call table: sortable columns + search across all fields ----
+// ---- Call table: customizable columns (order + show/hide), sortable, searchable ----
+const COLS = [
+  {k:'ts',       label:'Date & Time'},
+  {k:'name',     label:'Name'},
+  {k:'callerId', label:'Caller ID'},
+  {k:'callback', label:'Phone Provided'},
+  {k:'_match',   label:'Match',    ctr:true},
+  {k:'_text',    label:'Texts OK', ctr:true},
+  {k:'email',    label:'Email'},
+  {k:'secs',     label:'Length'},
+  {k:'outcome',  label:'Outcome'}
+];
+const COLKEYS = COLS.map(c=>c.k);
+const colDef = k => COLS.find(c=>c.k===k);
+let PREFS = loadPrefs();
+function loadPrefs(){
+  try{
+    const p = JSON.parse(localStorage.getItem('cc_table_prefs')||'{}');
+    let order = Array.isArray(p.order) ? p.order.filter(k=>COLKEYS.includes(k)) : COLKEYS.slice();
+    COLKEYS.forEach(k=>{ if(!order.includes(k)) order.push(k); });
+    const hidden = Array.isArray(p.hidden) ? p.hidden.filter(k=>COLKEYS.includes(k)) : [];
+    return { order, hidden };
+  }catch(e){ return { order: COLKEYS.slice(), hidden: [] }; }
+}
+function savePrefs(){ try{ localStorage.setItem('cc_table_prefs', JSON.stringify(PREFS)); }catch(e){} }
+function resetPrefs(){ PREFS = { order: COLKEYS.slice(), hidden: [] }; savePrefs(); buildHeader(); draw(); renderSettings(); }
+function visibleCols(){ return PREFS.order.filter(k=>!PREFS.hidden.includes(k)); }
+
 let ROWS = [], SORT = { k:'ts', dir:-1 };
 const looksLikePhone = s => /^[+\d(][\d\s().-]{5,}$/.test(s||'');
 const digits10 = s => (s||'').replace(/\D/g,'').slice(-10);
 function matchState(callerId, callback){
   const a=digits10(callerId), b=digits10(callback);
-  if(b.length<10) return '';               // nothing usable to compare
+  if(b.length<10) return '';
   return (a.length>=10 && a===b) ? 'match' : 'mismatch';
 }
 function fmtTime(r){
   return r.ts ? new Date(r.ts).toLocaleString([], {month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit'}) : (r.time||'');
+}
+const td = t => { const e=document.createElement('td'); e.textContent = (t===0?'0':t) || '—'; return e; };
+const icon = (ch,cls) => { const e=document.createElement('td'); e.className='ctr'; const s=document.createElement('span'); s.className='ic '+cls; s.textContent=ch; e.appendChild(s); return e; };
+function cellFor(r,k){
+  if(k==='ts') return td(fmtTime(r));
+  if(k==='secs') return td(fmt(r.secs));
+  if(k==='_match') return r._match==='match'?icon('✓','ok'):r._match==='mismatch'?icon('⚠','warn'):icon('—','mute');
+  if(k==='_text') return r._text==='yes'?icon('✓','ok'):r._text==='no'?icon('✗','no'):icon('—','mute');
+  if(k==='outcome'){ const o=document.createElement('td'); const sp=document.createElement('span'); sp.className='tag '+tagClass(r.outcome); sp.textContent=r.outcome; o.appendChild(sp); return o; }
+  return td(r[k]);
+}
+function buildHeader(){
+  const tr=document.getElementById('thead'); tr.innerHTML='';
+  visibleCols().forEach(k=>{
+    const c=colDef(k);
+    const th=document.createElement('th');
+    th.dataset.k=k; if(c.ctr) th.classList.add('ctr');
+    th.onclick=()=>sortBy(k);
+    th.appendChild(document.createTextNode(c.label));
+    const a=document.createElement('span'); a.className='arr'; th.appendChild(a);
+    tr.appendChild(th);
+  });
 }
 function sortBy(k){
   if(SORT.k===k) SORT.dir=-SORT.dir;
@@ -158,28 +218,63 @@ function draw(){
   rows.sort((a,b)=>{
     const x=a[k]??'', y=b[k]??'';
     if(typeof x==='number'&&typeof y==='number') return (x-y)*dir;
-    if(!x&&y) return 1; if(x&&!y) return -1;   // empties always last
+    if(!x&&y) return 1; if(x&&!y) return -1;
     return String(x).localeCompare(String(y))*dir;
   });
-  document.querySelectorAll('th[data-k]').forEach(th=>{
+  document.querySelectorAll('#thead th[data-k]').forEach(th=>{
     th.querySelector('.arr').textContent = th.dataset.k===k ? (dir>0?' ▲':' ▼') : '';
   });
-  const tb=document.getElementById('rows');tb.innerHTML='';
-  rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    const td=t=>{const e=document.createElement('td');e.textContent=t||'—';return e;};
-    const icon=(ch,cls)=>{const e=document.createElement('td');e.className='ctr';const s=document.createElement('span');s.className='ic '+cls;s.textContent=ch;e.appendChild(s);return e;};
-    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.callerId));tr.appendChild(td(r.callback));
-    tr.appendChild(r._match==='match'?icon('✓','ok'):r._match==='mismatch'?icon('⚠','warn'):icon('—','mute'));
-    tr.appendChild(r._text==='yes'?icon('✓','ok'):r._text==='no'?icon('✗','no'):icon('—','mute'));
-    tr.appendChild(td(r.name));
-    tr.appendChild(td(r.email));tr.appendChild(td(fmt(r.secs)));
-    const o=document.createElement('td');const sp=document.createElement('span');
-    sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
-    tb.appendChild(tr);
-  });
+  const vis=visibleCols();
+  const tb=document.getElementById('rows'); tb.innerHTML='';
+  rows.forEach(r=>{ const tr=document.createElement('tr'); vis.forEach(k=>tr.appendChild(cellFor(r,k))); tb.appendChild(tr); });
   document.getElementById('nores').style.display=rows.length?'none':'block';
 }
+
+// ---- Settings popover ----
+function toggleSettings(ev){
+  if(ev) ev.stopPropagation();
+  const p=document.getElementById('cfgpop');
+  if(p.style.display==='block'){ p.style.display='none'; return; }
+  const r=document.getElementById('gearBtn').getBoundingClientRect();
+  p.style.top=(r.bottom+6)+'px';
+  p.style.left=Math.max(8,r.right-238)+'px';
+  p.style.display='block';
+  renderSettings();
+}
+function renderSettings(){
+  const box=document.getElementById('cfglist'); box.innerHTML='';
+  PREFS.order.forEach((k,i)=>{
+    const c=colDef(k);
+    const row=document.createElement('div'); row.className='cfgrow';
+    const lbl=document.createElement('label');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!PREFS.hidden.includes(k);
+    cb.onchange=()=>toggleCol(k);
+    lbl.appendChild(cb); lbl.appendChild(document.createTextNode(' '+c.label));
+    const btns=document.createElement('div'); btns.className='cfgbtns';
+    const up=document.createElement('button'); up.textContent='▲'; up.disabled=i===0; up.title='Move up'; up.onclick=()=>moveCol(k,-1);
+    const dn=document.createElement('button'); dn.textContent='▼'; dn.disabled=i===PREFS.order.length-1; dn.title='Move down'; dn.onclick=()=>moveCol(k,1);
+    btns.appendChild(up); btns.appendChild(dn);
+    row.appendChild(lbl); row.appendChild(btns);
+    box.appendChild(row);
+  });
+}
+function toggleCol(k){
+  const i=PREFS.hidden.indexOf(k);
+  if(i>=0) PREFS.hidden.splice(i,1);
+  else { if(visibleCols().length<=1){ renderSettings(); return; } PREFS.hidden.push(k); }
+  savePrefs(); buildHeader(); draw();
+}
+function moveCol(k,dir){
+  const i=PREFS.order.indexOf(k), j=i+dir;
+  if(j<0||j>=PREFS.order.length) return;
+  const t=PREFS.order[i]; PREFS.order[i]=PREFS.order[j]; PREFS.order[j]=t;
+  savePrefs(); buildHeader(); draw(); renderSettings();
+}
+document.addEventListener('click', e=>{
+  const p=document.getElementById('cfgpop');
+  if(p.style.display==='block' && !p.contains(e.target) && e.target.id!=='gearBtn') p.style.display='none';
+});
+
 function render(d){
   document.getElementById('kCalls').textContent=d.calls;
   document.getElementById('kLeads').textContent=d.leads;
