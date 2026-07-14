@@ -22,8 +22,15 @@ body{background:linear-gradient(180deg,var(--navy),var(--navy2));color:var(--whi
 .usage h3{font-size:16px;margin-bottom:14px}
 .bar{height:14px;background:#0a1a30;border-radius:8px;overflow:hidden}.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),#3ee0f0)}
 .uinfo{display:flex;justify-content:space-between;color:var(--mute);font-size:13px;margin-top:8px}
-.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 22px 14px;margin-bottom:22px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 22px 14px;margin-bottom:22px;overflow-x:auto}
 .sec h3{font-size:16px;margin:16px 0 6px}
+.sechead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.search{padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:#0a1a30;color:var(--white);font-size:13px;font-weight:600;outline:none;width:230px;max-width:100%}
+.search:focus{border-color:var(--cyan)}
+th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
+th[data-k]:hover{color:var(--white)}
+th .arr{color:var(--cyan);font-size:10px}
+.nores{color:var(--mute);font-size:13px;padding:12px 6px;display:none}
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:12px 6px;font-size:14px;border-bottom:1px solid var(--line)}
 th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
@@ -78,8 +85,16 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
     <div class="bar"><i id="ubar" style="width:0%"></i></div>
     <div class="uinfo"><span><b id="uUsed" style="color:#fff">—</b> of <span id="uInc"></span> included minutes used</span><span id="uLeft"></span></div>
   </div>
-  <div class="sec"><h3>Recent calls</h3>
-    <table><thead><tr><th>Time</th><th>Caller</th><th>Length</th><th>Outcome</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="sec"><div class="sechead"><h3>Calls</h3><input id="q" class="search" type="search" placeholder="Search calls&hellip;" oninput="draw()"></div>
+    <table><thead><tr>
+      <th data-k="ts" onclick="sortBy('ts')">Date &amp; Time<span class="arr"></span></th>
+      <th data-k="phone" onclick="sortBy('phone')">Phone<span class="arr"></span></th>
+      <th data-k="name" onclick="sortBy('name')">Name<span class="arr"></span></th>
+      <th data-k="email" onclick="sortBy('email')">Email<span class="arr"></span></th>
+      <th data-k="secs" onclick="sortBy('secs')">Length<span class="arr"></span></th>
+      <th data-k="outcome" onclick="sortBy('outcome')">Outcome<span class="arr"></span></th>
+    </tr></thead><tbody id="rows"></tbody></table>
+    <div class="nores" id="nores">No calls match your search.</div></div>
   <div class="foot">Client Connected · customer portal</div>
 </div>
 </div>
@@ -113,6 +128,43 @@ function enter(c){
   load(c);
 }
 function tagClass(o){o=o.toLowerCase();return o.includes('book')?'booked':o.includes('lead')?'lead':'missed';}
+
+// ---- Call table: sortable columns + search across all fields ----
+let ROWS = [], SORT = { k:'ts', dir:-1 };
+const looksLikePhone = s => /^[+\d(][\d\s().-]{5,}$/.test(s||'');
+function fmtTime(r){
+  return r.ts ? new Date(r.ts).toLocaleString([], {month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit'}) : (r.time||'');
+}
+function sortBy(k){
+  if(SORT.k===k) SORT.dir=-SORT.dir;
+  else SORT={k, dir:(k==='ts'||k==='secs')?-1:1};
+  draw();
+}
+function draw(){
+  const q=(document.getElementById('q').value||'').trim().toLowerCase();
+  const rows=ROWS.filter(r=>!q||[fmtTime(r),r.phone,r.name,r.email,fmt(r.secs),r.outcome].join(' ').toLowerCase().includes(q));
+  const k=SORT.k, dir=SORT.dir;
+  rows.sort((a,b)=>{
+    const x=a[k]??'', y=b[k]??'';
+    if(typeof x==='number'&&typeof y==='number') return (x-y)*dir;
+    if(!x&&y) return 1; if(x&&!y) return -1;   // empties always last
+    return String(x).localeCompare(String(y))*dir;
+  });
+  document.querySelectorAll('th[data-k]').forEach(th=>{
+    th.querySelector('.arr').textContent = th.dataset.k===k ? (dir>0?' ▲':' ▼') : '';
+  });
+  const tb=document.getElementById('rows');tb.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    const td=t=>{const e=document.createElement('td');e.textContent=t||'—';return e;};
+    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.phone));tr.appendChild(td(r.name));
+    tr.appendChild(td(r.email));tr.appendChild(td(fmt(r.secs)));
+    const o=document.createElement('td');const sp=document.createElement('span');
+    sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
+    tb.appendChild(tr);
+  });
+  document.getElementById('nores').style.display=rows.length?'none':'block';
+}
 function render(d){
   document.getElementById('kCalls').textContent=d.calls;
   document.getElementById('kLeads').textContent=d.leads;
@@ -122,13 +174,14 @@ function render(d){
   document.getElementById('uUsed').textContent=used;
   document.getElementById('ubar').style.width=Math.min(100,used/inc*100)+'%';
   document.getElementById('uLeft').textContent=(inc-used>=0?(inc-used)+' left':(used-inc)+' over')+' · resets monthly';
-  const tb=document.getElementById('rows');tb.innerHTML='';
-  d.recent.forEach(r=>{const tr=document.createElement('tr');
-    const td=t=>{const e=document.createElement('td');e.textContent=t;return e;};
-    tr.appendChild(td(r.time));tr.appendChild(td(r.caller));tr.appendChild(td(fmt(r.secs)));
-    const o=document.createElement('td');const sp=document.createElement('span');
-    sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
-    tb.appendChild(tr);});
+  ROWS=(d.recent||[]).map(r=>({
+    ts:r.ts||0, time:r.time||'',
+    phone:r.phone!==undefined?r.phone:(looksLikePhone(r.caller)?r.caller:''),
+    name:r.name!==undefined?r.name:(looksLikePhone(r.caller)?'':(r.caller==='Unknown'?'':r.caller)),
+    email:r.email||'',
+    secs:r.secs||0, outcome:r.outcome||''
+  }));
+  draw();
   document.getElementById('src').textContent='● live data';
   document.getElementById('src').style.color='#34D399';
   document.getElementById('errBox').style.display='none';
