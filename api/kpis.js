@@ -44,6 +44,15 @@ export default async function handler(req, res) {
       const callerId = c.from_number || "";
       const phone = callback || callerId;
       const email = emailOf(d);
+      // Text-message consent can arrive as a boolean or a spoken string across agents.
+      const consentRaw = d.consent_to_text ?? d.text_consent ?? d.text_permission ?? d.sms_consent ?? d.text_ok;
+      let textConsent = null;
+      if (typeof consentRaw === "boolean") textConsent = consentRaw;
+      else if (typeof consentRaw === "string") {
+        const cs = consentRaw.trim().toLowerCase();
+        if (cs && /(yes|true|grant|consent|agree|allow|\bok\b|permitted|1)/.test(cs)) textConsent = true;
+        else if (cs && /(no|false|deny|declin|refus|denied|0)/.test(cs)) textConsent = false;
+      }
       const isLead = !!name || !!callback || outcome.includes("lead");
       const isAppt = outcome.includes("book") || outcome.includes("appointment") || outcome.includes("appt") || d.booked === true;
       if (isLead) leads++;
@@ -52,7 +61,7 @@ export default async function handler(req, res) {
         ts: c.start_timestamp || 0,
         time: c.start_timestamp ? new Date(c.start_timestamp).toLocaleString() : "",
         caller: name || phone || "Unknown",
-        name, phone, email, callerId, callback,
+        name, phone, email, callerId, callback, textConsent,
         secs: Math.round(s),
         outcome: isAppt ? "Booked" : isLead ? "Lead captured" : (s <= 8 ? "No info given" : "Handled")
       });
