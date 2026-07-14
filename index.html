@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Client Connected — Dashboard</title>
+<title>Client Connected — Customer Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--navy:#0B2141;--navy2:#050E1F;--card:#0f2440;--cyan:#22D3EE;--white:#F0F6FC;--mute:#9FB3C8;--green:#34D399;--amber:#F59E42;--line:#1c3557}
@@ -10,7 +10,7 @@ body{background:linear-gradient(180deg,var(--navy),var(--navy2));color:var(--whi
 .brand{font-weight:800;font-size:22px}.brand span{color:var(--cyan)}
 .biz{color:var(--mute);font-weight:600;font-size:14px;text-align:right}.biz b{color:var(--white);display:block;font-size:16px}
 .wrap{max-width:1080px;margin:0 auto;padding:26px 28px}
-.plan{display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+.plan{display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap;align-items:center}
 .pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:700;font-size:14px}
 .pill.cyan{border-color:var(--cyan);color:var(--cyan)}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
@@ -30,53 +30,120 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
 .tag{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
 .tag.booked{background:rgba(52,211,153,.15);color:var(--green)}.tag.lead{background:rgba(34,211,238,.15);color:var(--cyan)}.tag.missed{background:rgba(245,158,66,.15);color:var(--amber)}
 .foot{color:var(--mute);font-size:12px;text-align:center;margin-top:30px}
+.err{background:rgba(245,158,66,.1);border:1px solid var(--amber);color:var(--amber);border-radius:12px;padding:14px 18px;font-size:14px;font-weight:600;margin-bottom:22px;display:none}
+#loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:38px 34px;width:100%;max-width:400px;text-align:center}
+.login .brand{font-size:26px;margin-bottom:6px}
+.login p{color:var(--mute);font-size:14px;margin-bottom:24px;font-weight:600}
+.login input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:#0a1a30;color:var(--white);font-size:16px;font-weight:600;text-align:center;letter-spacing:.06em;outline:none}
+.login input:focus{border-color:var(--cyan)}
+.login button{width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:var(--cyan);color:#04121f;font-size:16px;font-weight:800;cursor:pointer}
+.login button:hover{filter:brightness(1.1)}
+.login .lerr{color:var(--amber);font-size:13px;font-weight:600;margin-top:12px;min-height:16px}
+.login .note{color:var(--mute);font-size:12px;margin-top:18px}
+#appView{display:none}
+.logout{background:none;border:1px solid var(--line);color:var(--mute);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;margin-left:14px}
+.logout:hover{color:var(--white);border-color:var(--mute)}
 @media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
+
+<div id="loginView">
+  <div class="login">
+    <div class="brand">Client <span>Connected</span></div>
+    <p>Customer Portal</p>
+    <input id="code" type="password" placeholder="Access code" autocomplete="off" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Sign in</button>
+    <div class="lerr" id="lerr"></div>
+    <div class="note">Need access? Contact your Client Connected rep.</div>
+  </div>
+</div>
+
+<div id="appView">
 <div class="top"><div class="brand">Client <span>Connected</span></div>
-<div class="biz"><b id="bizName">Your business</b><span id="loc">Live dashboard</span></div></div>
+<div style="display:flex;align-items:center"><div class="biz"><b id="bizName"></b><span>Customer portal</span></div><button class="logout" onclick="logout()">Sign out</button></div></div>
 <div class="wrap">
   <div class="plan">
     <span class="pill cyan" id="planName">Live</span>
-    <span class="pill">This month <b id="period"></b></span>
+    <span class="pill">Activity to date</span>
     <span class="pill" id="src">connecting…</span>
   </div>
+  <div class="err" id="errBox">We couldn't load your live call data just now. Your AI agent is still answering calls — try refreshing in a minute.</div>
   <div class="grid">
     <div class="kpi"><div class="lab">Calls answered</div><div class="val green" id="kCalls">—</div><div class="sub">24/7, every one picked up</div></div>
     <div class="kpi"><div class="lab">Leads captured</div><div class="val cyan" id="kLeads">—</div><div class="sub">name · number · need</div></div>
     <div class="kpi"><div class="lab">Appointments booked</div><div class="val" id="kAppt">—</div><div class="sub">on the calendar</div></div>
-    <div class="kpi"><div class="lab">Avg call length</div><div class="val" id="kAvg">—</div><div class="sub">across all calls</div></div>
+    <div class="kpi"><div class="lab">Avg call length</div><div class="val" id="kAvg">—</div><div class="sub">across answered calls</div></div>
   </div>
-  <div class="usage"><h3>Minutes this month</h3>
+  <div class="usage"><h3>Minutes used</h3>
     <div class="bar"><i id="ubar" style="width:0%"></i></div>
-    <div class="uinfo"><span><b id="uUsed" style="color:#fff">—</b> of <span id="uInc">500</span> included minutes used</span><span id="uLeft"></span></div>
+    <div class="uinfo"><span><b id="uUsed" style="color:#fff">—</b> of <span id="uInc"></span> included minutes used</span><span id="uLeft"></span></div>
   </div>
   <div class="sec"><h3>Recent calls</h3>
     <table><thead><tr><th>Time</th><th>Caller</th><th>Length</th><th>Outcome</th></tr></thead><tbody id="rows"></tbody></table></div>
-  <div class="foot">Client Connected · live dashboard</div>
+  <div class="foot">Client Connected · customer portal</div>
 </div>
+</div>
+
 <script>
-const INCLUDED = 500; // plan's included minutes (wire per-customer later)
+// ---- Customer registry: access code -> portal feed. Add one line per new customer. ----
+// NOTE: front-door gate only (demo-grade). Real per-user auth ships with cc-portal.
+const CUSTOMERS = {
+  "burke2026": { biz: "Burke Sealcoating", agent: "agent_af1cbfbf5ca32c6e7458bd987e", included: 500, plan: "Pilot" }
+};
+// ---------------------------------------------------------------------------------------
+
+let CUR = null;
 const fmt = s => `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
-const now = new Date();
-document.getElementById('period').textContent = now.toLocaleString('en-US',{month:'short'})+' '+now.getFullYear();
-const sample = {calls:128,minutesUsed:344,leads:73,appointments:31,avgSec:161,recent:[
-  {time:"Today 9:12a",caller:"Johnson, M. — roof estimate",secs:204,outcome:"Booked"},
-  {time:"Today 9:31a",caller:"Maria S. — new gutter quote",secs:125,outcome:"Lead captured"},
-  {time:"Today 10:05a",caller:"Dale K.",secs:107,outcome:"Booked"}]};
+
+function login(){
+  const code = document.getElementById('code').value.trim();
+  const c = CUSTOMERS[code];
+  if(!c){ document.getElementById('lerr').textContent = "That code didn't match. Check it and try again."; return; }
+  sessionStorage.setItem('cc_code', code);
+  enter(c);
+}
+function logout(){ sessionStorage.removeItem('cc_code'); location.reload(); }
+function enter(c){
+  CUR = c;
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  document.getElementById('bizName').textContent = c.biz;
+  document.getElementById('planName').textContent = c.plan;
+  document.getElementById('uInc').textContent = c.included;
+  load(c);
+}
 function tagClass(o){o=o.toLowerCase();return o.includes('book')?'booked':o.includes('lead')?'lead':'missed';}
-function render(d,live){
+function render(d){
   document.getElementById('kCalls').textContent=d.calls;
   document.getElementById('kLeads').textContent=d.leads;
   document.getElementById('kAppt').textContent=d.appointments;
   document.getElementById('kAvg').textContent=fmt(d.avgSec);
-  const used=d.minutesUsed;document.getElementById('uUsed').textContent=used;
-  document.getElementById('ubar').style.width=Math.min(100,used/INCLUDED*100)+'%';
-  document.getElementById('uLeft').textContent=(INCLUDED-used>=0?(INCLUDED-used)+' left':(used-INCLUDED)+' over')+' · resets next month';
+  const inc=CUR.included, used=d.minutesUsed;
+  document.getElementById('uUsed').textContent=used;
+  document.getElementById('ubar').style.width=Math.min(100,used/inc*100)+'%';
+  document.getElementById('uLeft').textContent=(inc-used>=0?(inc-used)+' left':(used-inc)+' over')+' · resets monthly';
   const tb=document.getElementById('rows');tb.innerHTML='';
   d.recent.forEach(r=>{const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.time}</td><td>${r.caller}</td><td>${fmt(r.secs)}</td><td><span class="tag ${tagClass(r.outcome)}">${r.outcome}</span></td>`;tb.appendChild(tr);});
-  document.getElementById('src').textContent=live?'● live data':'sample data';
-  document.getElementById('src').style.color=live?'#34D399':'#9FB3C8';
+    const td=t=>{const e=document.createElement('td');e.textContent=t;return e;};
+    tr.appendChild(td(r.time));tr.appendChild(td(r.caller));tr.appendChild(td(fmt(r.secs)));
+    const o=document.createElement('td');const sp=document.createElement('span');
+    sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
+    tb.appendChild(tr);});
+  document.getElementById('src').textContent='● live data';
+  document.getElementById('src').style.color='#34D399';
+  document.getElementById('errBox').style.display='none';
 }
-fetch('/api/kpis').then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(d.error)throw 0;render(d,true);}).catch(()=>render(sample,false));
+function fail(){
+  document.getElementById('src').textContent='data unavailable';
+  document.getElementById('src').style.color='#F59E42';
+  document.getElementById('errBox').style.display='block';
+}
+function load(c){
+  fetch('/api/kpis?agent='+encodeURIComponent(c.agent))
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(d=>{ if(d.error) throw 0; render(d); })
+    .catch(fail);
+}
+const saved = sessionStorage.getItem('cc_code');
+if(saved && CUSTOMERS[saved]) enter(CUSTOMERS[saved]);
 </script></body></html>
