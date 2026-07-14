@@ -88,7 +88,8 @@ th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;let
   <div class="sec"><div class="sechead"><h3>Calls</h3><input id="q" class="search" type="search" placeholder="Search calls&hellip;" oninput="draw()"></div>
     <table><thead><tr>
       <th data-k="ts" onclick="sortBy('ts')">Date &amp; Time<span class="arr"></span></th>
-      <th data-k="phone" onclick="sortBy('phone')">Phone<span class="arr"></span></th>
+      <th data-k="callerId" onclick="sortBy('callerId')">Caller ID<span class="arr"></span></th>
+      <th data-k="callback" onclick="sortBy('callback')">Phone Provided<span class="arr"></span></th>
       <th data-k="name" onclick="sortBy('name')">Name<span class="arr"></span></th>
       <th data-k="email" onclick="sortBy('email')">Email<span class="arr"></span></th>
       <th data-k="secs" onclick="sortBy('secs')">Length<span class="arr"></span></th>
@@ -142,7 +143,7 @@ function sortBy(k){
 }
 function draw(){
   const q=(document.getElementById('q').value||'').trim().toLowerCase();
-  const rows=ROWS.filter(r=>!q||[fmtTime(r),r.phone,r.name,r.email,fmt(r.secs),r.outcome].join(' ').toLowerCase().includes(q));
+  const rows=ROWS.filter(r=>!q||[fmtTime(r),r.callerId,r.callback,r.name,r.email,fmt(r.secs),r.outcome].join(' ').toLowerCase().includes(q));
   const k=SORT.k, dir=SORT.dir;
   rows.sort((a,b)=>{
     const x=a[k]??'', y=b[k]??'';
@@ -157,7 +158,7 @@ function draw(){
   rows.forEach(r=>{
     const tr=document.createElement('tr');
     const td=t=>{const e=document.createElement('td');e.textContent=t||'—';return e;};
-    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.phone));tr.appendChild(td(r.name));
+    tr.appendChild(td(fmtTime(r)));tr.appendChild(td(r.callerId));tr.appendChild(td(r.callback));tr.appendChild(td(r.name));
     tr.appendChild(td(r.email));tr.appendChild(td(fmt(r.secs)));
     const o=document.createElement('td');const sp=document.createElement('span');
     sp.className='tag '+tagClass(r.outcome);sp.textContent=r.outcome;o.appendChild(sp);tr.appendChild(o);
@@ -176,7 +177,8 @@ function render(d){
   document.getElementById('uLeft').textContent=(inc-used>=0?(inc-used)+' left':(used-inc)+' over')+' · resets monthly';
   ROWS=(d.recent||[]).map(r=>({
     ts:r.ts||0, time:r.time||'',
-    phone:r.phone!==undefined?r.phone:(looksLikePhone(r.caller)?r.caller:''),
+    callerId:r.callerId!==undefined?r.callerId:(r.phone!==undefined?r.phone:(looksLikePhone(r.caller)?r.caller:'')),
+    callback:r.callback||'',
     name:r.name!==undefined?r.name:(looksLikePhone(r.caller)?'':(r.caller==='Unknown'?'':r.caller)),
     email:r.email||'',
     secs:r.secs||0, outcome:r.outcome||''
